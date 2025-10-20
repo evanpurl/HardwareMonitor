@@ -60,12 +60,6 @@ namespace HardwareMonitor
 
             // System tray setup
             _trayMenu = new ContextMenuStrip();
-            _startupMenuItem = new ToolStripMenuItem("Run on Startup", null, ToggleStartup)
-            {
-                Checked = IsStartupEnabled()
-            };
-            _trayMenu.Items.Add(_startupMenuItem);
-            _trayMenu.Items.Add(new ToolStripSeparator());
             _trayMenu.Items.Add("Exit", null, (s, e) => Application.Exit());
 
             _trayIcon = new NotifyIcon
@@ -133,32 +127,6 @@ namespace HardwareMonitor
             using var g = CreateGraphics();
             var size = g.MeasureString(_label.Text, _label.Font);
             Size = new Size((int)Math.Ceiling(size.Width) + 20, (int)Math.Ceiling(size.Height) + 10);
-        }
-
-        private bool IsStartupEnabled()
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(StartupRegKey, false);
-            return key?.GetValue(_appName) is string path && path.Length > 0;
-        }
-
-        private void ToggleStartup(object? sender, EventArgs e)
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(StartupRegKey, true) ??
-                            Registry.CurrentUser.CreateSubKey(StartupRegKey);
-
-            if (_startupMenuItem.Checked)
-            {
-                // Disable
-                key?.DeleteValue(_appName, false);
-                _startupMenuItem.Checked = false;
-            }
-            else
-            {
-                // Enable
-                string exePath = Application.ExecutablePath;
-                key?.SetValue(_appName, $"\"{exePath}\"");
-                _startupMenuItem.Checked = true;
-            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
