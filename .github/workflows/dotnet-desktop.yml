@@ -1,0 +1,56 @@
+name: Build and Publish All
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publish Windows build
+        shell: pwsh
+        run: |
+          dotnet publish HardwareMonitor/HardwareMonitor.csproj -c Release -r win-x64 --self-contained true -o publish/out
+
+      - name: Zip Windows output
+        run: Compress-Archive -Path publish/out/* -DestinationPath hardwaremonitor.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hardwaremonitor
+          path: hardwaremonitor.zip
+  publish-windows:
+    # ... (rest of the job is unchanged)
+    runs-on: ubuntu-latest
+    needs: build-windows
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hardwaremonitor
+          path: ./out
+      - uses: actions/checkout@v4
+        with:
+          repository: evanpurl/evanpurl.github.io
+          token: ${{ secrets.PUBLISH_TOKEN }}
+          path: site
+
+      - name: Copy Windows build
+        run: |
+          mkdir -p site/hardwaremonitor
+          cp ./out/hardwaremonitor.zip site/hardwaremonitor/
+
+      - name: Commit and push
+        run: |
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Publish Windows build" || echo "No changes"
+          git push
